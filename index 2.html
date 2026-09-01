@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>Vita — mon espace</title>
+<meta name="theme-color" content="#6E4A5E">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Vita">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<style>
+  :root{
+    --ink:#2B2230;
+    --ink-soft:#6b5c66;
+    --paper:#F6F1EC;
+    --surface:#FFFFFF;
+    --line:#E7DED5;
+    --primary:#6E4A5E;
+    --primary-dim:#efe6ea;
+    --sage:#5C7A5E;
+    --sage-dim:#e7ede7;
+    --ochre:#B5804A;
+    --ochre-dim:#f3e8db;
+    --danger:#A6483C;
+    --radius:16px;
+    --serif: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Times New Roman', serif;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:var(--sans); -webkit-font-smoothing:antialiased;
+    padding-top: env(safe-area-inset-top);
+  }
+  #app{max-width:560px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column; position:relative;}
+
+  header.top{
+    padding:22px 20px 16px; background:var(--paper);
+    border-bottom:1px solid var(--line);
+    position:sticky; top:0; z-index:5;
+  }
+  header.top .row{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+  header.top h1{
+    font-family:var(--serif); font-weight:400; font-size:1.5rem; margin:0; letter-spacing:.2px;
+  }
+  header.top .sub{color:var(--ink-soft); font-size:.88rem; margin-top:2px;}
+  .icon-btn{
+    background:var(--surface); border:1px solid var(--line); border-radius:12px;
+    width:40px; height:40px; display:flex; align-items:center; justify-content:center;
+    font-size:1.05rem; cursor:pointer; color:var(--ink); flex:none;
+  }
+  .icon-btn:active{transform:scale(0.94);}
+  .back-row{display:flex; align-items:center; gap:10px; margin-bottom:2px;}
+  .back-row button{background:none;border:none;font-size:1.3rem;color:var(--primary);cursor:pointer;padding:2px 4px 2px 0;}
+
+  main#view{flex:1; padding:16px 20px 110px; overflow-y:auto;}
+
+  /* Dashboard */
+  .hero{
+    background:linear-gradient(155deg, var(--primary) 0%, #5a3c4c 100%);
+    color:#fbf6f2; border-radius:20px; padding:20px 20px 18px; margin-bottom:18px;
+  }
+  .hero .greet{font-family:var(--serif); font-size:1.35rem; margin:0 0 4px;}
+  .hero .date{opacity:.85; font-size:.85rem; margin-bottom:14px;}
+  .hero-stats{display:flex; gap:10px;}
+  .hero-stat{flex:1; background:rgba(255,255,255,.12); border-radius:12px; padding:10px 10px;}
+  .hero-stat .num{font-family:var(--serif); font-size:1.35rem; line-height:1;}
+  .hero-stat .lbl{font-size:.72rem; opacity:.85; margin-top:3px;}
+
+  .section-title{font-family:var(--serif); font-size:1.05rem; margin:22px 0 10px; color:var(--ink);}
+  .section-title:first-child{margin-top:0;}
+
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+    padding:14px 14px; margin-bottom:10px;
+  }
+  .card.tight{padding:12px 14px;}
+
+  .reminder-row{display:flex; align-items:center; gap:12px;}
+  .reminder-row .tag{
+    font-size:1.15rem; width:34px; height:34px; border-radius:10px; background:var(--primary-dim);
+    display:flex; align-items:center; justify-content:center; flex:none;
+  }
+  .reminder-row .txt{flex:1; min-width:0;}
+  .reminder-row .txt .t{font-size:.93rem; font-weight:600;}
+  .reminder-row .txt .m{font-size:.8rem; color:var(--ink-soft);}
+  .reminder-row .when{font-size:.78rem; color:var(--ink-soft); flex:none; text-align:right;}
+  .reminder-row .when.soon{color:var(--danger); font-weight:600;}
+
+  .empty{
+    text-align:center; padding:40px 16px; color:var(--ink-soft);
+  }
+  .empty .big{font-size:2rem; margin-bottom:8px;}
+  .empty p{margin:4px 0; font-size:.9rem;}
+
+  /* Modules grid */
+  .grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px;}
+  .tile{
+    background:var(--surface); border:1px solid var(--line); border-radius:16px;
+    padding:16px 8px 12px; text-align:center; cursor:pointer;
+  }
+  .tile:active{transform:scale(0.96);}
+  .tile .ic{font-size:1.6rem; margin-bottom:6px;}
+  .tile .lb{font-size:.74rem; line-height:1.15; color:var(--ink);}
+
+  /* List items (generic modules) */
+  .item{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    padding:12px 14px; margin-bottom:9px; display:flex; gap:11px; align-items:flex-start;
+  }
+  .item.done{opacity:.55;}
+  .check{
+    width:22px; height:22px; border-radius:50%; border:2px solid var(--primary); flex:none;
+    margin-top:2px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:.7rem; color:var(--surface);
+  }
+  .check.on{background:var(--primary);}
+  .item .body{flex:1; min-width:0;}
+  .item .title{font-weight:600; font-size:.95rem;}
+  .item.done .title{text-decoration:line-through;}
+  .item .meta{font-size:.78rem; color:var(--ink-soft); margin-top:2px;}
+  .item .notes{font-size:.82rem; color:var(--ink-soft); margin-top:4px;}
+  .item .del{background:none; border:none; color:var(--ink-soft); font-size:1.1rem; cursor:pointer; flex:none; padding:2px 2px;}
+  .pill{
+    display:inline-block; font-size:.7rem; padding:2px 8px; border-radius:20px;
+    background:var(--sage-dim); color:var(--sage); margin-right:6px;
+  }
+  .progress-bar{height:6px; background:var(--primary-dim); border-radius:6px; overflow:hidden; margin-top:6px;}
+  .progress-bar > div{height:100%; background:var(--primary);}
+
+  /* FAB */
+  .fab{
+    position:fixed; right:calc(20px + (100vw - 560px) / 2); bottom:96px;
+    width:54px; height:54px; border-radius:50%; background:var(--primary); color:#fff;
+    border:none; font-size:1.6rem; box-shadow:0 6px 16px rgba(110,74,94,.4); cursor:pointer; z-index:8;
+  }
+  @media (max-width:600px){ .fab{right:20px;} }
+  .fab:active{transform:scale(0.94);}
+
+  /* Bottom nav */
+  nav.bottom{
+    position:fixed; bottom:0; left:0; right:0; background:var(--surface);
+    border-top:1px solid var(--line); display:flex; z-index:9;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  nav.bottom .wrap{max-width:560px; margin:0 auto; display:flex; width:100%;}
+  nav.bottom button{
+    flex:1; background:none; border:none; padding:10px 4px 8px; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--ink-soft);
+  }
+  nav.bottom button .ic{font-size:1.25rem;}
+  nav.bottom button .lb{font-size:.68rem;}
+  nav.bottom button.active{color:var(--primary);}
+
+  /* Modal */
+  .overlay{
+    position:fixed; inset:0; background:rgba(43,34,48,.45); z-index:20;
+    display:flex; align-items:flex-end; justify-content:center;
+  }
+  .sheet{
+    background:var(--paper); width:100%; max-width:560px; border-radius:20px 20px 0 0;
+    padding:18px 20px calc(20px + env(safe-area-inset-bottom)); max-height:86vh; overflow-y:auto;
+  }
+  .sheet h3{font-family:var(--serif); font-weight:400; margin:0 0 14px;}
+  .field{margin-bottom:12px;}
+  .field label{display:block; font-size:.78rem; color:var(--ink-soft); margin-bottom:5px;}
+  .field input, .field select, .field textarea{
+    width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px;
+    font-size:.95rem; font-family:var(--sans); background:var(--surface); color:var(--ink);
+  }
+  .field textarea{resize:vertical; min-height:60px;}
+  .sheet-actions{display:flex; gap:10px; margin-top:16px;}
+  .btn{
+    flex:1; padding:12px; border-radius:12px; border:none; font-size:.95rem; font-weight:600; cursor:pointer;
+  }
+  .btn.primary{background:var(--primary); color:#fff;}
+  .btn.ghost{background:var(--surface); color:var(--ink); border:1px solid var(--line);}
+  .btn.danger{background:var(--danger); color:#fff;}
+
+  /* Mood */
+  .mood-picker{display:flex; justify-content:space-between; margin-bottom:14px;}
+  .mood-opt{font-size:1.7rem; background:none; border:2px solid transparent; border-radius:14px; padding:6px 8px; cursor:pointer;}
+  .mood-opt.sel{border-color:var(--primary); background:var(--primary-dim);}
+
+  /* Skincare */
+  .step-row{display:flex; align-items:center; gap:10px; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin-bottom:8px;}
+  .step-row.on{background:var(--sage-dim); border-color:var(--sage-dim);}
+  .step-row .txt{flex:1;}
+
+  /* Budget */
+  .balance{font-family:var(--serif); font-size:2rem; margin:2px 0 2px;}
+  .cat-bar{display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:.85rem;}
+  .cat-bar .name{width:100px; flex:none; color:var(--ink-soft);}
+  .cat-bar .track{flex:1; height:8px; background:var(--primary-dim); border-radius:6px; overflow:hidden;}
+  .cat-bar .track > div{height:100%; background:var(--primary);}
+  .cat-bar .amt{width:64px; text-align:right; flex:none;}
+
+  /* Documents */
+  .doc-row{display:flex; align-items:center; gap:12px; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:12px 14px; margin-bottom:9px;}
+  .doc-row .ic{font-size:1.4rem; flex:none;}
+  .doc-row .body{flex:1; min-width:0;}
+  .doc-row .name{font-weight:600; font-size:.9rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .doc-row .meta{font-size:.76rem; color:var(--ink-soft);}
+  .doc-row a{color:var(--primary); text-decoration:none; font-size:.8rem; flex:none;}
+
+  .offline-banner{
+    background:var(--ochre-dim); color:#7a5326; font-size:.8rem; padding:8px 14px;
+    text-align:center; display:none;
+  }
+  .offline-banner.show{display:block;}
+
+  .toast{
+    position:fixed; bottom:90px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff;
+    padding:10px 18px; border-radius:30px; font-size:.85rem; z-index:30; opacity:0; pointer-events:none;
+    transition:opacity .25s;
+  }
+  .toast.show{opacity:1;}
+
+  /* Gate: config / login / verify / PIN */
+  .gate{position:fixed; inset:0; background:var(--paper); display:flex; align-items:center; justify-content:center; padding:24px; z-index:50; overflow-y:auto;}
+  .gate-card{width:100%; max-width:380px;}
+  .gate-card h2{font-family:var(--serif); font-weight:400; font-size:1.6rem; margin:0 0 6px;}
+  .gate-card p.sub{color:var(--ink-soft); font-size:.9rem; margin:0 0 22px; line-height:1.4;}
+  .auth-toggle{display:flex; gap:8px; margin-bottom:18px;}
+  .auth-toggle button{flex:1; padding:9px; border-radius:10px; border:1px solid var(--line); background:var(--surface); color:var(--ink-soft); font-weight:600; cursor:pointer; font-size:.88rem;}
+  .auth-toggle button.active{background:var(--primary); color:#fff; border-color:var(--primary);}
+  .error-text{color:var(--danger); font-size:.85rem; margin:8px 0 0;}
+  .pin-dots{display:flex; justify-content:center; gap:14px; margin:30px 0;}
+  .pin-dot{width:16px; height:16px; border-radius:50%; border:2px solid var(--primary); background:transparent;}
+  .pin-dot.filled{background:var(--primary);}
+  .pinpad{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; max-width:260px; margin:0 auto;}
+  .pinpad button{aspect-ratio:1; border-radius:50%; border:1px solid var(--line); background:var(--surface); font-size:1.25rem; cursor:pointer; color:var(--ink);}
+  .pinpad button:active{background:var(--primary-dim);}
+  .pinpad button.plain{border:none; background:none; font-size:.85rem; color:var(--ink-soft);}
+  .link-btn{background:none; border:none; color:var(--primary); font-size:.85rem; cursor:pointer; padding:0; text-align:center; width:100%; margin-top:14px;}
+
+  /* Messages */
+  .channel-row{display:flex; align-items:center; gap:12px; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:12px 14px; margin-bottom:9px; cursor:pointer;}
+  .channel-row .av{width:38px; height:38px; border-radius:50%; background:var(--primary-dim); display:flex; align-items:center; justify-content:center; font-size:1.05rem; flex:none; color:var(--primary); font-weight:600;}
+  .channel-row .body{flex:1; min-width:0;}
+  .channel-row .name{font-weight:600; font-size:.92rem;}
+  .channel-row .last{font-size:.8rem; color:var(--ink-soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .chat-wrap{display:flex; flex-direction:column; height:calc(100vh - 190px);}
+  .chat-msgs{flex:1; overflow-y:auto; padding:4px 2px 10px;}
+  .msg-bubble{max-width:75%; padding:9px 13px; border-radius:16px; margin-bottom:8px; font-size:.9rem; line-height:1.35; word-wrap:break-word;}
+  .msg-bubble.mine{background:var(--primary); color:#fff; margin-left:auto; border-bottom-right-radius:4px;}
+  .msg-bubble.theirs{background:var(--surface); border:1px solid var(--line); margin-right:auto; border-bottom-left-radius:4px;}
+  .chat-input-row{display:flex; gap:8px; padding-top:10px; border-top:1px solid var(--line);}
+  .chat-input-row input{flex:1; padding:11px 14px; border-radius:20px; border:1px solid var(--line); font-size:.9rem; font-family:inherit;}
+  .chat-input-row button{background:var(--primary); color:#fff; border:none; border-radius:50%; width:42px; height:42px; flex:none; font-size:1.1rem; cursor:pointer;}
+</style>
+</head>
+<body>
+<div id="gate" style="display:none"></div>
+<div id="app" style="display:none">
+  <div class="offline-banner" id="offlineBanner">Hors connexion — tu vois tes données déjà enregistrées</div>
+  <header class="top" id="topbar"></header>
+  <main id="view"></main>
+  <button class="fab" id="fab" style="display:none">+</button>
+  <nav class="bottom">
+    <div class="wrap">
+      <button data-route="dashboard"><span class="ic">🏡</span><span class="lb">Accueil</span></button>
+      <button data-route="modules"><span class="ic">🗂️</span><span class="lb">Modules</span></button>
+      <button data-route="messages"><span class="ic">💬</span><span class="lb">Messages</span></button>
+      <button data-route="documents"><span class="ic">📄</span><span class="lb">Documents</span></button>
+      <button data-route="reminders"><span class="ic">🔔</span><span class="lb">Rappels</span></button>
+    </div>
+  </nav>
+</div>
+<div id="modalRoot"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------- Storage helpers ---------- */
+const LS = {
+  get(k, def){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; }catch(e){ return def; } },
+  set(k, v){ localStorage.setItem(k, JSON.stringify(v)); }
+};
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+/* IndexedDB for documents (files can be larger than localStorage comfortably allows) */
+const DB_NAME = 'vita-docs', STORE = 'documents';
+function openDB(){
+  return new Promise((resolve,reject)=>{
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = ()=>{ req.result.createObjectStore(STORE, {keyPath:'id'}); };
+    req.onsuccess = ()=> resolve(req.result);
+    req.onerror = ()=> reject(req.error);
+  });
+}
+async function dbAll(){
+  const db = await openDB();
+  return new Promise((resolve,reject)=>{
+    const tx = db.transaction(STORE,'readonly');
+    const req = tx.objectStore(STORE).getAll();
+    req.onsuccess = ()=> resolve(req.result.sort((a,b)=> b.date.localeCompare(a.date)));
+    req.onerror = ()=> reject(req.error);
+  });
+}
+async function dbPut(doc){
+  const db = await openDB();
+  return new Promise((resolve,reject)=>{
+    const tx = db.transaction(STORE,'readwrite');
+    tx.objectStore(STORE).put(doc);
+    tx.oncomplete = ()=> resolve();
+    tx.onerror = ()=> reject(tx.error);
+  });
+}
+async function dbDelete(id){
+  const db = await openDB();
+  return new Promise((resolve,reject)=>{
+    const tx = db.transaction(STORE,'readwrite');
+    tx.objectStore(STORE).delete(id);
+    tx.oncomplete = ()=> resolve();
+    tx.onerror = ()=> reject(tx.error);
+  });
+}
+
+/* ---------- Firebase (comptes + messagerie) ---------- */
+const firebaseReady = typeof firebaseConfig !== 'undefined' && firebaseConfig.apiKey && firebaseConfig.apiKey !== 'REMPLACE_MOI';
+let auth = null, db = null, currentUser = null;
+let channelsUnsub = null, msgUnsub = null;
+let authMode = 'login'; // 'login' | 'signup'
+let channelCache = {}; // channelId -> channel data (members, emails)
+
+if(firebaseReady){
+  firebase.initializeApp(firebaseConfig);
+  auth = firebase.auth();
+  db = firebase.firestore();
+  auth.onAuthStateChanged((user)=>{
+    currentUser = user;
+    boot();
+  });
+} 
+
+function emailKey(email){ return encodeURIComponent(String(email).trim().toLowerCase()); }
+
+async function upsertUserDirectory(user){
+  if(!db || !user) return;
+  try{
+    await db.collection('users_by_email').doc(emailKey(user.email)).set({
+      uid: user.uid, email: user.email.toLowerCase()
+    }, {merge:true});
+  }catch(e){ /* ignore — les règles Firestore n'étant pas encore posées, ce n'est pas bloquant */ }
+}
+
+/* ---- Local PIN (verrou rapide de l'app, pas une vraie sécurité de compte) ---- */
+async function sha256(text){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function pinKey(uid){ return 'vita_pin_' + uid; }
+function hasPin(uid){ return !!localStorage.getItem(pinKey(uid)); }
+async function setPin(uid, pin){ localStorage.setItem(pinKey(uid), await sha256(uid+':'+pin)); }
+async function checkPin(uid, pin){ return localStorage.getItem(pinKey(uid)) === await sha256(uid+':'+pin); }
+function isUnlocked(uid){ return sessionStorage.getItem('vita_unlocked_'+uid) === '1'; }
+function markUnlocked(uid){ sessionStorage.setItem('vita_unlocked_'+uid, '1'); }
+
+/* ---- Gate: decides what to show (config / login / verify / pin / app) ---- */
+function boot(){
+  const gate = document.getElementById('gate');
+  const app = document.getElementById('app');
+
+  if(!firebaseReady){
+    gate.style.display='flex'; app.style.display='none';
+    gate.innerHTML = gateWrap(`
+      <h2>Configuration requise</h2>
+      <p class="sub">Pour activer les comptes et la messagerie, connecte l'app à un projet Firebase (gratuit). Ouvre le fichier <strong>firebase-config.js</strong> et colle-y ta configuration — voir LISEZ-MOI.md pour le guide pas à pas.</p>
+      <div class="card tight" style="font-size:.82rem; color:var(--ink-soft);">En attendant, tu peux continuer à utiliser l'app normalement pour tout le reste (études, budget, documents…) — seuls le compte et les messages ne sont pas actifs.</div>
+      <button class="btn primary" style="width:100%; margin-top:14px;" onclick="skipAuth()">Continuer sans compte</button>
+    `);
+    return;
+  }
+
+  if(!currentUser){
+    if(sessionStorage.getItem('vita_skip_auth')==='1'){ showApp(); return; }
+    gate.style.display='flex'; app.style.display='none';
+    renderAuthScreen();
+    return;
+  }
+
+  if(!currentUser.emailVerified){
+    gate.style.display='flex'; app.style.display='none';
+    renderVerifyScreen();
+    return;
+  }
+
+  upsertUserDirectory(currentUser);
+
+  if(!hasPin(currentUser.uid)){
+    gate.style.display='flex'; app.style.display='none';
+    renderSetPinScreen();
+    return;
+  }
+
+  if(!isUnlocked(currentUser.uid)){
+    gate.style.display='flex'; app.style.display='none';
+    renderPinLockScreen();
+    return;
+  }
+
+  showApp();
+}
+function showApp(){
+  document.getElementById('gate').style.display='none';
+  document.getElementById('app').style.display='flex';
+  render();
+}
+function skipAuth(){ sessionStorage.setItem('vita_skip_auth','1'); showApp(); }
+function gateWrap(inner){ return `<div class="gate-card">${inner}</div>`; }
+
+function renderAuthScreen(){
+  const gate = document.getElementById('gate');
+  gate.innerHTML = gateWrap(`
+    <h2>Vita</h2>
+    <p class="sub">${authMode==='login' ? 'Connecte-toi pour accéder à ton espace.' : 'Crée ton compte pour commencer.'}</p>
+    <div class="auth-toggle">
+      <button class="${authMode==='login'?'active':''}" onclick="authMode='login'; renderAuthScreen();">Se connecter</button>
+      <button class="${authMode==='signup'?'active':''}" onclick="authMode='signup'; renderAuthScreen();">Créer un compte</button>
+    </div>
+    <div class="field"><label>Email</label><input id="authEmail" type="email" autocomplete="email"></div>
+    <div class="field"><label>Mot de passe</label><input id="authPass" type="password" autocomplete="${authMode==='login'?'current-password':'new-password'}"></div>
+    <button class="btn primary" style="width:100%;" onclick="submitAuth()">${authMode==='login'?'Se connecter':'Créer mon compte'}</button>
+    <div id="authError"></div>
+    ${authMode==='login' ? `<button class="link-btn" onclick="resetPassword()">Mot de passe oublié ?</button>` : ''}
+  `);
+}
+async function submitAuth(){
+  const email = document.getElementById('authEmail').value.trim();
+  const pass = document.getElementById('authPass').value;
+  const errBox = document.getElementById('authError');
+  errBox.innerHTML = '';
+  if(!email || !pass){ errBox.innerHTML = `<p class="error-text">Renseigne ton email et ton mot de passe.</p>`; return; }
+  try{
+    if(authMode==='signup'){
+      const cred = await auth.createUserWithEmailAndPassword(email, pass);
+      await cred.user.sendEmailVerification();
+      await upsertUserDirectory(cred.user);
+    } else {
+      await auth.signInWithEmailAndPassword(email, pass);
+    }
+  }catch(e){
+    errBox.innerHTML = `<p class="error-text">${authErrorMessage(e)}</p>`;
+  }
+}
+function authErrorMessage(e){
+  const map = {
+    'auth/email-already-in-use': 'Un compte existe déjà avec cet email.',
+    'auth/invalid-email': "Cet email n'est pas valide.",
+    'auth/weak-password': 'Le mot de passe doit faire au moins 6 caractères.',
+    'auth/user-not-found': 'Aucun compte avec cet email.',
+    'auth/wrong-password': 'Mot de passe incorrect.',
+    'auth/invalid-credential': 'Email ou mot de passe incorrect.',
+    'auth/too-many-requests': 'Trop de tentatives, réessaie dans un moment.'
+  };
+  return map[e.code] || "Une erreur est survenue, réessaie.";
+}
+async function resetPassword(){
+  const email = document.getElementById('authEmail').value.trim();
+  if(!email){ document.getElementById('authError').innerHTML = `<p class="error-text">Indique ton email d'abord.</p>`; return; }
+  try{ await auth.sendPasswordResetEmail(email); showToast('Email de réinitialisation envoyé'); }
+  catch(e){ document.getElementById('authError').innerHTML = `<p class="error-text">${authErrorMessage(e)}</p>`; }
+}
+
+function renderVerifyScreen(){
+  const gate = document.getElementById('gate');
+  gate.innerHTML = gateWrap(`
+    <h2>Vérifie ton email</h2>
+    <p class="sub">Un lien de vérification a été envoyé à <strong>${escapeHtml(currentUser.email)}</strong>. Clique dessus, puis reviens ici.</p>
+    <button class="btn primary" style="width:100%;" onclick="checkVerified()">J'ai vérifié, continuer</button>
+    <button class="link-btn" onclick="resendVerification()">Renvoyer l'email</button>
+    <button class="link-btn" onclick="auth.signOut()">Se déconnecter</button>
+  `);
+}
+async function checkVerified(){
+  await currentUser.reload();
+  currentUser = auth.currentUser;
+  boot();
+  if(!currentUser.emailVerified) showToast("Pas encore vérifié — vérifie ta boîte mail");
+}
+async function resendVerification(){
+  try{ await currentUser.sendEmailVerification(); showToast('Email renvoyé'); }
+  catch(e){ showToast("Attends un peu avant de renvoyer"); }
+}
+
+let pinBuffer = '';
+function renderSetPinScreen(){
+  pinBuffer = '';
+  const gate = document.getElementById('gate');
+  gate.innerHTML = gateWrap(`
+    <h2>Crée ton code</h2>
+    <p class="sub">Ce code à 4 chiffres te permettra de déverrouiller l'app rapidement sur cet appareil.</p>
+    <div class="pin-dots" id="pinDots">${pinDotsHtml(0)}</div>
+    ${pinPadHtml('onPinDigitSetup')}
+  `);
+}
+function pinDotsHtml(n){
+  let out=''; for(let i=0;i<4;i++) out += `<div class="pin-dot ${i<n?'filled':''}"></div>`; return out;
+}
+function pinPadHtml(handler){
+  const keys = ['1','2','3','4','5','6','7','8','9','','0','⌫'];
+  return `<div class="pinpad">${keys.map(k=>{
+    if(k===''){ return `<div></div>`; }
+    if(k==='⌫'){ return `<button class="plain" onclick="${handler}('back')">⌫</button>`; }
+    return `<button onclick="${handler}('${k}')">${k}</button>`;
+  }).join('')}</div>`;
+}
+let pinFirstEntry = null;
+function onPinDigitSetup(k){
+  if(k==='back'){ pinBuffer = pinBuffer.slice(0,-1); }
+  else if(pinBuffer.length<4){ pinBuffer += k; }
+  document.getElementById('pinDots').innerHTML = pinDotsHtml(pinBuffer.length);
+  if(pinBuffer.length===4){
+    if(pinFirstEntry===null){
+      pinFirstEntry = pinBuffer; pinBuffer='';
+      const gate = document.getElementById('gate');
+      gate.innerHTML = gateWrap(`
+        <h2>Confirme ton code</h2>
+        <p class="sub">Retape le même code pour confirmer.</p>
+        <div class="pin-dots" id="pinDots">${pinDotsHtml(0)}</div>
+        ${pinPadHtml('onPinDigitSetup')}
+      `);
+    } else {
+      if(pinBuffer === pinFirstEntry){
+        setPin(currentUser.uid, pinBuffer).then(()=>{ markUnlocked(currentUser.uid); pinFirstEntry=null; boot(); });
+      } else {
+        showToast('Les codes ne correspondent pas, recommence');
+        pinFirstEntry=null; pinBuffer='';
+        renderSetPinScreen();
+      }
+    }
+  }
+}
+function renderPinLockScreen(){
+  pinBuffer='';
+  const gate = document.getElementById('gate');
+  gate.innerHTML = gateWrap(`
+    <h2>Bon retour 👋</h2>
+    <p class="sub">Entre ton code pour déverrouiller Vita.</p>
+    <div class="pin-dots" id="pinDots">${pinDotsHtml(0)}</div>
+    ${pinPadHtml('onPinDigitUnlock')}
+    <button class="link-btn" onclick="forgotPin()">Code oublié ?</button>
+  `);
+}
+async function onPinDigitUnlock(k){
+  if(k==='back'){ pinBuffer = pinBuffer.slice(0,-1); }
+  else if(pinBuffer.length<4){ pinBuffer += k; }
+  document.getElementById('pinDots').innerHTML = pinDotsHtml(pinBuffer.length);
+  if(pinBuffer.length===4){
+    const ok = await checkPin(currentUser.uid, pinBuffer);
+    if(ok){ markUnlocked(currentUser.uid); boot(); }
+    else{ showToast('Code incorrect'); pinBuffer=''; document.getElementById('pinDots').innerHTML = pinDotsHtml(0); }
+  }
+}
+function forgotPin(){
+  localStorage.removeItem(pinKey(currentUser.uid));
+  showToast('Code réinitialisé — définis-en un nouveau');
+  boot();
+}
+function logout(){
+  if(channelsUnsub){ channelsUnsub(); channelsUnsub=null; }
+  if(msgUnsub){ msgUnsub(); msgUnsub=null; }
+  if(auth) auth.signOut();
+  sessionStorage.removeItem('vita_skip_auth');
+  boot();
+}
+
+/* ---------- Messaging ---------- */
+function renderChannelList(view){
+  if(!firebaseReady || !currentUser){
+    view.innerHTML = emptyBlock('💬', 'Connecte-toi avec un compte pour envoyer des messages.');
+    return;
+  }
+  view.innerHTML = `
+    <button class="btn primary" style="width:100%; margin-bottom:14px;" onclick="startNewChannel()">+ Nouvelle conversation</button>
+    <div id="channelListBody">${emptyBlock('💬','Chargement…')}</div>
+  `;
+  if(channelsUnsub) channelsUnsub();
+  channelsUnsub = db.collection('channels')
+    .where('members','array-contains', currentUser.uid)
+    .onSnapshot((snap)=>{
+      if(state.route!=='messages' || state.module) return;
+      const body = document.getElementById('channelListBody');
+      if(!body) return;
+      if(snap.empty){ body.innerHTML = emptyBlock('💬','Aucune conversation. Lance-en une avec quelqu\u2019un qui a déjà un compte Vita.'); return; }
+      const rows = [];
+      snap.forEach(doc=>{
+        const c = doc.data(); channelCache[doc.id] = c;
+        const otherEmail = (c.memberEmails||[]).find(e=> e !== currentUser.email.toLowerCase()) || '…';
+        rows.push(`<div class="channel-row" onclick="go('messages','${doc.id}')">
+          <div class="av">${otherEmail.charAt(0).toUpperCase()}</div>
+          <div class="body"><div class="name">${escapeHtml(otherEmail)}</div><div class="last">Touche pour ouvrir la conversation</div></div>
+        </div>`);
+      });
+      body.innerHTML = rows.join('');
+    }, ()=>{
+      const body = document.getElementById('channelListBody');
+      if(body) body.innerHTML = emptyBlock('⚠️','Impossible de charger les conversations — vérifie les règles Firestore (voir LISEZ-MOI.md).');
+    });
+}
+function channelPartnerName(channelId){
+  const c = channelCache[channelId];
+  if(!c) return 'Conversation';
+  const other = (c.memberEmails||[]).find(e=> e !== currentUser.email.toLowerCase());
+  return other || 'Conversation';
+}
+async function startNewChannel(){
+  openSheet('Nouvelle conversation', `
+    <div class="field"><label>Email de la personne (doit déjà avoir un compte Vita)</label><input id="f_partnerEmail" type="email"></div>
+    <div id="channelFormError"></div>
+  `, async ()=>{
+    const email = document.getElementById('f_partnerEmail').value.trim().toLowerCase();
+    const errBox = document.getElementById('channelFormError');
+    if(!email){ errBox.innerHTML = `<p class="error-text">Indique un email</p>`; return false; }
+    if(email === currentUser.email.toLowerCase()){ errBox.innerHTML = `<p class="error-text">Tu ne peux pas te chatter toi-même 😉</p>`; return false; }
+    try{
+      const doc = await db.collection('users_by_email').doc(emailKey(email)).get();
+      if(!doc.exists){ errBox.innerHTML = `<p class="error-text">Cette personne n'a pas encore de compte Vita.</p>`; return false; }
+      const otherUid = doc.data().uid;
+      const channelId = [currentUser.uid, otherUid].sort().join('_');
+      await db.collection('channels').doc(channelId).set({
+        members: [currentUser.uid, otherUid],
+        memberEmails: [currentUser.email.toLowerCase(), email],
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, {merge:true});
+      go('messages', channelId);
+      return true;
+    }catch(e){
+      errBox.innerHTML = `<p class="error-text">Erreur — vérifie les règles Firestore (LISEZ-MOI.md).</p>`;
+      return false;
+    }
+  });
+}
+function renderChat(view, channelId){
+  view.innerHTML = `
+    <div class="chat-wrap">
+      <div class="chat-msgs" id="chatMsgs">${emptyBlock('💬','Chargement…')}</div>
+      <div class="chat-input-row">
+        <input id="chatInput" type="text" placeholder="Écris un message…" onkeydown="if(event.key==='Enter') sendChatMessage('${channelId}')">
+        <button onclick="sendChatMessage('${channelId}')">➤</button>
+      </div>
+    </div>
+  `;
+  if(msgUnsub) msgUnsub();
+  msgUnsub = db.collection('channels').doc(channelId).collection('messages')
+    .orderBy('createdAt','asc')
+    .onSnapshot((snap)=>{
+      if(!(state.route==='messages' && state.module===channelId)) return;
+      const box = document.getElementById('chatMsgs');
+      if(!box) return;
+      if(snap.empty){ box.innerHTML = emptyBlock('💬','Dis bonjour !'); return; }
+      box.innerHTML = snap.docs.map(d=>{
+        const m = d.data();
+        const mine = m.senderId === currentUser.uid;
+        return `<div class="msg-bubble ${mine?'mine':'theirs'}">${escapeHtml(m.text)}</div>`;
+      }).join('');
+      box.scrollTop = box.scrollHeight;
+    }, ()=>{
+      const box = document.getElementById('chatMsgs');
+      if(box) box.innerHTML = emptyBlock('⚠️','Impossible de charger les messages — vérifie les règles Firestore.');
+    });
+}
+async function sendChatMessage(channelId){
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if(!text) return;
+  input.value = '';
+  try{
+    await db.collection('channels').doc(channelId).collection('messages').add({
+      text, senderId: currentUser.uid, senderEmail: currentUser.email.toLowerCase(),
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  }catch(e){ showToast("Message non envoyé — vérifie ta connexion"); input.value = text; }
+}
+
+/* ---------- Module config (generic list modules) ---------- */
+const MODULES = {
+  etudes: { label:'Études & alternance', icon:'🎓', key:'lm_etudes', hasDone:true, dateField:'dueDate',
+    fields:[
+      {key:'title', label:'Titre', type:'text', required:true},
+      {key:'category', label:'Type', type:'select', options:['Cours','Devoir','Examen','Stage/alternance','Autre']},
+      {key:'dueDate', label:'Échéance', type:'date'},
+      {key:'notes', label:'Notes', type:'textarea'}
+    ]},
+  logement: { label:'Logement', icon:'🏠', key:'lm_logement', hasDone:true, dateField:'dueDate',
+    fields:[
+      {key:'title', label:'Titre', type:'text', required:true},
+      {key:'category', label:'Type', type:'select', options:['Loyer','Facture','Réparation','Tâche ménagère','Document','Autre']},
+      {key:'amount', label:'Montant (€)', type:'number'},
+      {key:'dueDate', label:'Date', type:'date'},
+      {key:'notes', label:'Notes', type:'textarea'}
+    ]},
+  courses: { label:'Courses & alimentation', icon:'🛒', key:'lm_courses', hasDone:true,
+    fields:[
+      {key:'title', label:'Article', type:'text', required:true},
+      {key:'category', label:'Catégorie', type:'select', options:['Frais','Épicerie','Hygiène','Maison','Autre']},
+      {key:'qty', label:'Quantité', type:'text'}
+    ]},
+  sport: { label:'Sport & santé', icon:'🏃', key:'lm_sport', hasDone:true,
+    fields:[
+      {key:'title', label:'Habitude / séance', type:'text', required:true},
+      {key:'category', label:'Catégorie', type:'select', options:['Sport','Eau','Sommeil','Habitude','Autre']},
+      {key:'notes', label:'Notes', type:'textarea'}
+    ]},
+  relations: { label:'Relations', icon:'❤️', key:'lm_relations', hasDone:false, dateField:'birthday',
+    fields:[
+      {key:'title', label:'Nom', type:'text', required:true},
+      {key:'category', label:'Catégorie', type:'select', options:['Ami·e','Famille','Amoureux/se','Autre']},
+      {key:'birthday', label:'Anniversaire', type:'date'},
+      {key:'notes', label:"Idées cadeaux / notes", type:'textarea'}
+    ]},
+  voyages: { label:'Voyages', icon:'✈️', key:'lm_voyages', hasDone:false, dateField:'dueDate',
+    fields:[
+      {key:'title', label:'Destination', type:'text', required:true},
+      {key:'category', label:'Statut', type:'select', options:['Prévu','Réalisé']},
+      {key:'dueDate', label:'Date de départ', type:'date'},
+      {key:'amount', label:'Budget (€)', type:'number'},
+      {key:'notes', label:'Notes / souvenirs', type:'textarea'}
+    ]},
+  objectifs: { label:'Objectifs', icon:'🎯', key:'lm_objectifs', hasDone:false, dateField:'dueDate', hasProgress:true,
+    fields:[
+      {key:'title', label:'Objectif', type:'text', required:true},
+      {key:'category', label:'Portée', type:'select', options:['Court terme','Moyen terme','Long terme']},
+      {key:'progress', label:'Progression (%)', type:'number'},
+      {key:'dueDate', label:'Échéance', type:'date'}
+    ]},
+  inventaire: { label:'Inventaire', icon:'📦', key:'lm_inventaire', hasDone:false,
+    fields:[
+      {key:'title', label:'Objet', type:'text', required:true},
+      {key:'category', label:'Catégorie', type:'select', options:['Vêtements','Beauté','Alimentation','Objets','Autre']},
+      {key:'qty', label:'Quantité', type:'text'},
+      {key:'notes', label:'Notes', type:'textarea'}
+    ]}
+};
+
+/* ---------- Router ---------- */
+let state = { route:'dashboard', module:null };
+
+function go(route, module){
+  if(channelsUnsub && route !== 'messages'){ channelsUnsub(); channelsUnsub = null; }
+  if(msgUnsub && !(route==='messages' && module===state.module)){ msgUnsub(); msgUnsub = null; }
+  state = {route, module};
+  render();
+  document.getElementById('view').scrollTop = 0;
+}
+
+function render(){
+  document.querySelectorAll('nav.bottom button').forEach(b=>{
+    b.classList.toggle('active', b.dataset.route === state.route);
+  });
+  const top = document.getElementById('topbar');
+  const view = document.getElementById('view');
+  const fab = document.getElementById('fab');
+  fab.style.display = 'none';
+
+  if(state.route === 'dashboard'){ top.innerHTML = topSimple('Vita'); renderDashboard(view); }
+  else if(state.route === 'modules' && !state.module){ top.innerHTML = topSimple('Modules'); renderModulesGrid(view); }
+  else if(state.route === 'modules' && state.module === 'budget'){ top.innerHTML = topBack('Budget'); renderBudget(view); }
+  else if(state.route === 'modules' && state.module === 'skincare'){ top.innerHTML = topBack('Skincare & glow up'); renderSkincare(view); }
+  else if(state.route === 'modules' && state.module === 'mood'){ top.innerHTML = topBack('Mood'); renderMood(view); }
+  else if(state.route === 'modules' && MODULES[state.module]){
+    const m = MODULES[state.module];
+    top.innerHTML = topBack(m.label);
+    renderGenericModule(view, state.module);
+    fab.style.display='flex';
+    fab.onclick = ()=> openItemForm(state.module);
+  }
+  else if(state.route === 'documents'){ top.innerHTML = topSimple('Documents'); renderDocuments(view); }
+  else if(state.route === 'reminders'){ top.innerHTML = topSimple('Centre de rappels'); renderReminders(view); }
+  else if(state.route === 'messages' && !state.module){ top.innerHTML = topSimple('Messages'); renderChannelList(view); }
+  else if(state.route === 'messages' && state.module){ top.innerHTML = topBack(channelPartnerName(state.module)); renderChat(view, state.module); }
+}
+
+function topSimple(title){
+  return `<div class="row"><h1>${title}</h1><button class="icon-btn" onclick="openBackup()">⚙️</button></div>`;
+}
+function topBack(title){
+  return `<div class="back-row"><button onclick="go('modules')">←</button><h1>${title}</h1></div>`;
+}
+
+/* ---------- Dashboard ---------- */
+function renderDashboard(view){
+  const today = new Date();
+  const dateStr = today.toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'});
+
+  const openTasks = ['etudes','logement','courses','sport'].reduce((n,k)=>{
+    return n + LS.get(MODULES[k].key, []).filter(i=>!i.done).length;
+  }, 0);
+
+  const upcoming = collectReminders().filter(r=> r.daysLeft!==null && r.daysLeft>=0 && r.daysLeft<=14);
+  const budget = LS.get('lm_budget', {transactions:[]});
+  const balance = budget.transactions.reduce((s,t)=> s + (t.type==='revenu'? +t.amount : -t.amount), 0);
+  const moods = LS.get('lm_mood', []);
+  const todayMood = moods.find(m=> m.date === today.toISOString().slice(0,10));
+
+  view.innerHTML = `
+    <div class="hero">
+      <p class="greet">Bonjour 👋</p>
+      <p class="date">${cap(dateStr)}</p>
+      <div class="hero-stats">
+        <div class="hero-stat"><div class="num">${openTasks}</div><div class="lbl">à faire</div></div>
+        <div class="hero-stat"><div class="num">${upcoming.length}</div><div class="lbl">échéances ≤ 14j</div></div>
+        <div class="hero-stat"><div class="num">${balance.toFixed(0)}€</div><div class="lbl">solde budget</div></div>
+      </div>
+    </div>
+
+    <div class="section-title">Prochainement</div>
+    ${upcoming.length ? upcoming.slice(0,4).map(reminderRow).join('') : emptyBlock('✨',"Rien à l'horizon dans les 14 prochains jours.")}
+
+    <div class="section-title">Aujourd'hui</div>
+    <div class="card tight">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-size:.9rem; color:var(--ink-soft)">Ton mood du jour</span>
+        <button class="btn ghost" style="flex:none; padding:6px 14px; font-size:.85rem;" onclick="go('modules','mood')">${todayMood? todayMood.emoji + ' modifier' : 'Ajouter'}</button>
+      </div>
+    </div>
+  `;
+}
+function emptyBlock(icon, text){
+  return `<div class="empty"><div class="big">${icon}</div><p>${text}</p></div>`;
+}
+function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+
+/* ---------- Modules grid ---------- */
+function renderModulesGrid(view){
+  const tiles = [
+    ...Object.entries(MODULES).map(([key,m])=> ({key, icon:m.icon, label:m.label})),
+    {key:'budget', icon:'💰', label:'Budget'},
+    {key:'skincare', icon:'✨', label:'Skincare & glow up'},
+    {key:'mood', icon:'💭', label:'Mood'}
+  ];
+  view.innerHTML = `<div class="grid">
+    ${tiles.map(t=> `<div class="tile" onclick="go('modules','${t.key}')"><div class="ic">${t.icon}</div><div class="lb">${t.label}</div></div>`).join('')}
+  </div>`;
+}
+
+/* ---------- Generic list modules ---------- */
+function renderGenericModule(view, key){
+  const cfg = MODULES[key];
+  let items = LS.get(cfg.key, []);
+  if(cfg.dateField){
+    items = items.slice().sort((a,b)=> (a[cfg.dateField]||'9999') < (b[cfg.dateField]||'9999') ? -1:1);
+  }
+  if(!items.length){
+    view.innerHTML = emptyBlock(cfg.icon, `Rien ici pour l'instant. Touche + pour ajouter.`);
+    return;
+  }
+  view.innerHTML = items.map(it=> itemRow(key, cfg, it)).join('');
+}
+
+function itemRow(moduleKey, cfg, it){
+  const meta = [];
+  if(it.category) meta.push(it.category);
+  if(it.qty) meta.push(it.qty + (cfg.key==='lm_courses'?'':''));
+  if(it.amount) meta.push(it.amount + '€');
+  if(it.dueDate) meta.push(fmtDate(it.dueDate));
+  if(it.birthday) meta.push('🎂 ' + fmtDate(it.birthday));
+
+  let progress = '';
+  if(cfg.hasProgress){
+    const p = Math.max(0, Math.min(100, +it.progress||0));
+    progress = `<div class="progress-bar"><div style="width:${p}%"></div></div>`;
+  }
+
+  const checkHtml = cfg.hasDone
+    ? `<div class="check ${it.done?'on':''}" onclick="toggleDone('${moduleKey}','${it.id}')">${it.done?'✓':''}</div>`
+    : '';
+
+  return `<div class="item ${it.done?'done':''}">
+    ${checkHtml}
+    <div class="body" onclick="openItemForm('${moduleKey}','${it.id}')">
+      <div class="title">${escapeHtml(it.title)}</div>
+      ${meta.length? `<div class="meta">${meta.map(escapeHtml).join(' · ')}</div>` : ''}
+      ${it.notes? `<div class="notes">${escapeHtml(it.notes)}</div>` : ''}
+      ${progress}
+    </div>
+    <button class="del" onclick="deleteItem('${moduleKey}','${it.id}')">✕</button>
+  </div>`;
+}
+
+function toggleDone(moduleKey, id){
+  const cfg = MODULES[moduleKey];
+  const items = LS.get(cfg.key, []);
+  const it = items.find(i=>i.id===id);
+  if(it){ it.done = !it.done; LS.set(cfg.key, items); render(); }
+}
+function deleteItem(moduleKey, id){
+  const cfg = MODULES[moduleKey];
+  const items = LS.get(cfg.key, []).filter(i=>i.id!==id);
+  LS.set(cfg.key, items);
+  render();
+  showToast('Supprimé');
+}
+
+function openItemForm(moduleKey, id){
+  const cfg = MODULES[moduleKey];
+  const items = LS.get(cfg.key, []);
+  const existing = id ? items.find(i=>i.id===id) : null;
+  const fieldsHtml = cfg.fields.map(f=>{
+    const val = existing ? (existing[f.key]||'') : '';
+    if(f.type==='select'){
+      return `<div class="field"><label>${f.label}</label><select id="f_${f.key}">
+        <option value=""></option>
+        ${f.options.map(o=>`<option value="${o}" ${val===o?'selected':''}>${o}</option>`).join('')}
+      </select></div>`;
+    }
+    if(f.type==='textarea'){
+      return `<div class="field"><label>${f.label}</label><textarea id="f_${f.key}">${escapeHtml(val)}</textarea></div>`;
+    }
+    return `<div class="field"><label>${f.label}</label><input id="f_${f.key}" type="${f.type}" value="${escapeHtml(val)}"></div>`;
+  }).join('');
+
+  openSheet(`${existing? 'Modifier' : 'Ajouter'} — ${cfg.label}`, fieldsHtml, ()=>{
+    const data = existing ? {...existing} : {id: uid(), done:false};
+    let missingRequired = false;
+    cfg.fields.forEach(f=>{
+      const el = document.getElementById('f_'+f.key);
+      const v = el.value.trim();
+      if(f.required && !v) missingRequired = true;
+      data[f.key] = v;
+    });
+    if(missingRequired){ showToast('Le titre est obligatoire'); return false; }
+    const list = LS.get(cfg.key, []);
+    if(existing){
+      const idx = list.findIndex(i=>i.id===existing.id);
+      list[idx] = data;
+    } else {
+      list.push(data);
+    }
+    LS.set(cfg.key, list);
+    render();
+    showToast('Enregistré');
+    return true;
+  }, existing ? ()=>{ deleteItem(moduleKey, existing.id); closeSheet(); } : null);
+}
+
+/* ---------- Budget ---------- */
+function renderBudget(view){
+  const data = LS.get('lm_budget', {transactions:[]});
+  const tx = data.transactions;
+  const balance = tx.reduce((s,t)=> s + (t.type==='revenu'? +t.amount : -t.amount), 0);
+  const catTotals = {};
+  tx.filter(t=>t.type==='depense').forEach(t=>{ catTotals[t.category||'Autre'] = (catTotals[t.category||'Autre']||0) + (+t.amount); });
+  const maxCat = Math.max(1, ...Object.values(catTotals));
+
+  view.innerHTML = `
+    <div class="card">
+      <div style="font-size:.85rem; color:var(--ink-soft)">Solde</div>
+      <div class="balance">${balance.toFixed(2)} €</div>
+    </div>
+    ${Object.keys(catTotals).length ? `<div class="section-title">Dépenses par catégorie</div>
+    <div class="card">
+      ${Object.entries(catTotals).sort((a,b)=>b[1]-a[1]).map(([c,v])=>`
+        <div class="cat-bar"><div class="name">${escapeHtml(c)}</div><div class="track"><div style="width:${(v/maxCat*100)}%"></div></div><div class="amt">${v.toFixed(0)}€</div></div>
+      `).join('')}
+    </div>` : ''}
+    <div class="section-title">Transactions</div>
+    ${tx.length? tx.slice().reverse().map(t=>`
+      <div class="item">
+        <div class="body">
+          <div class="title">${t.type==='revenu'?'+':'-'}${(+t.amount).toFixed(2)}€ ${t.category? '· '+escapeHtml(t.category):''}</div>
+          <div class="meta">${fmtDate(t.date)}${t.notes? ' · '+escapeHtml(t.notes):''}</div>
+        </div>
+        <button class="del" onclick="deleteTx('${t.id}')">✕</button>
+      </div>
+    `).join('') : emptyBlock('💰','Aucune transaction. Ajoute ton premier revenu ou dépense.')}
+    <button class="fab" style="display:flex" onclick="openTxForm()">+</button>
+  `;
+}
+function deleteTx(id){
+  const data = LS.get('lm_budget', {transactions:[]});
+  data.transactions = data.transactions.filter(t=>t.id!==id);
+  LS.set('lm_budget', data);
+  render();
+}
+function openTxForm(){
+  const fieldsHtml = `
+    <div class="field"><label>Type</label><select id="f_type"><option value="depense">Dépense</option><option value="revenu">Revenu</option></select></div>
+    <div class="field"><label>Montant (€)</label><input id="f_amount" type="number" step="0.01"></div>
+    <div class="field"><label>Catégorie</label><select id="f_category">
+      <option value="">—</option>
+      <option>Loyer</option><option>Factures</option><option>Courses</option><option>Transport</option><option>Épargne</option><option>Sorties</option><option>Santé</option><option>Autre</option>
+    </select></div>
+    <div class="field"><label>Date</label><input id="f_date" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+    <div class="field"><label>Notes</label><input id="f_notes" type="text"></div>
+  `;
+  openSheet('Ajouter une transaction', fieldsHtml, ()=>{
+    const amount = parseFloat(document.getElementById('f_amount').value);
+    if(!amount){ showToast('Indique un montant'); return false; }
+    const data = LS.get('lm_budget', {transactions:[]});
+    data.transactions.push({
+      id: uid(),
+      type: document.getElementById('f_type').value,
+      amount,
+      category: document.getElementById('f_category').value,
+      date: document.getElementById('f_date').value || new Date().toISOString().slice(0,10),
+      notes: document.getElementById('f_notes').value
+    });
+    LS.set('lm_budget', data);
+    render();
+    showToast('Transaction ajoutée');
+    return true;
+  });
+}
+
+/* ---------- Skincare ---------- */
+function defaultSkincare(){
+  return { am:[{id:uid(),name:'Nettoyant',done:false},{id:uid(),name:'Sérum',done:false},{id:uid(),name:'Crème hydratante',done:false},{id:uid(),name:'SPF',done:false}],
+           pm:[{id:uid(),name:'Démaquillant',done:false},{id:uid(),name:'Nettoyant',done:false},{id:uid(),name:'Sérum',done:false},{id:uid(),name:'Crème de nuit',done:false}],
+           products:[] };
+}
+function renderSkincare(view){
+  const data = LS.get('lm_skincare', defaultSkincare());
+  const stepBlock = (list, prefix)=> list.map(s=>`
+    <div class="step-row ${s.done?'on':''}" onclick="toggleSkincareStep('${prefix}','${s.id}')">
+      <div class="check ${s.done?'on':''}">${s.done?'✓':''}</div>
+      <div class="txt">${escapeHtml(s.name)}</div>
+    </div>`).join('');
+
+  view.innerHTML = `
+    <div class="section-title">🌞 Routine du matin</div>
+    <div>${stepBlock(data.am,'am')}</div>
+    <button class="btn ghost" style="margin-top:6px; width:100%;" onclick="addSkincareStep('am')">+ Ajouter une étape</button>
+
+    <div class="section-title">🌙 Routine du soir</div>
+    <div>${stepBlock(data.pm,'pm')}</div>
+    <button class="btn ghost" style="margin-top:6px; width:100%;" onclick="addSkincareStep('pm')">+ Ajouter une étape</button>
+
+    <div class="section-title">Produits</div>
+    ${data.products.length? data.products.map(p=>`
+      <div class="item">
+        <div class="body">
+          <div class="title">${escapeHtml(p.name)}</div>
+          <div class="meta">Ouvert le ${fmtDate(p.openedDate)}${p.repurchase? ' · racheter avant '+fmtDate(p.repurchase):''}</div>
+        </div>
+        <button class="del" onclick="deleteProduct('${p.id}')">✕</button>
+      </div>
+    `).join('') : emptyBlock('✨',"Aucun produit suivi pour l'instant.")}
+    <button class="fab" style="display:flex" onclick="openProductForm()">+</button>
+  `;
+}
+function toggleSkincareStep(prefix, id){
+  const data = LS.get('lm_skincare', defaultSkincare());
+  const s = data[prefix].find(x=>x.id===id);
+  if(s){ s.done=!s.done; LS.set('lm_skincare', data); render(); }
+}
+function addSkincareStep(prefix){
+  openSheet('Nouvelle étape', `<div class="field"><label>Nom de l'étape</label><input id="f_name" type="text"></div>`, ()=>{
+    const name = document.getElementById('f_name').value.trim();
+    if(!name){ showToast("Donne un nom à l'étape"); return false; }
+    const data = LS.get('lm_skincare', defaultSkincare());
+    data[prefix].push({id:uid(), name, done:false});
+    LS.set('lm_skincare', data);
+    render();
+    return true;
+  });
+}
+function openProductForm(){
+  openSheet('Ajouter un produit', `
+    <div class="field"><label>Nom du produit</label><input id="f_name" type="text"></div>
+    <div class="field"><label>Date d'ouverture</label><input id="f_opened" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+    <div class="field"><label>Rappel de rachat (optionnel)</label><input id="f_repurchase" type="date"></div>
+  `, ()=>{
+    const name = document.getElementById('f_name').value.trim();
+    if(!name){ showToast('Donne un nom au produit'); return false; }
+    const data = LS.get('lm_skincare', defaultSkincare());
+    data.products.push({id:uid(), name, openedDate:document.getElementById('f_opened').value, repurchase:document.getElementById('f_repurchase').value});
+    LS.set('lm_skincare', data);
+    render();
+    return true;
+  });
+}
+function deleteProduct(id){
+  const data = LS.get('lm_skincare', defaultSkincare());
+  data.products = data.products.filter(p=>p.id!==id);
+  LS.set('lm_skincare', data);
+  render();
+}
+
+/* ---------- Mood ---------- */
+const MOOD_OPTS = ['😔','😕','😐','🙂','😄'];
+function renderMood(view){
+  const moods = LS.get('lm_mood', []);
+  const todayKey = new Date().toISOString().slice(0,10);
+  const today = moods.find(m=>m.date===todayKey);
+  view.innerHTML = `
+    <div class="card">
+      <div style="font-size:.85rem; color:var(--ink-soft); margin-bottom:10px;">Comment tu te sens aujourd'hui ?</div>
+      <div class="mood-picker">
+        ${MOOD_OPTS.map(e=>`<button class="mood-opt ${today&&today.emoji===e?'sel':''}" onclick="setMood('${e}')">${e}</button>`).join('')}
+      </div>
+      <textarea id="moodNote" placeholder="Une note (optionnel)" style="width:100%; min-height:60px; border:1px solid var(--line); border-radius:10px; padding:10px; font-family:inherit;">${today? escapeHtml(today.note||'') : ''}</textarea>
+      <button class="btn primary" style="width:100%; margin-top:10px;" onclick="saveMoodNote()">Enregistrer</button>
+    </div>
+    <div class="section-title">Historique</div>
+    ${moods.length? moods.slice().reverse().map(m=>`
+      <div class="item">
+        <div style="font-size:1.3rem;">${m.emoji}</div>
+        <div class="body">
+          <div class="meta">${fmtDate(m.date)}</div>
+          ${m.note? `<div class="notes">${escapeHtml(m.note)}</div>`:''}
+        </div>
+      </div>
+    `).join('') : emptyBlock('💭',"Ton journal d'humeur est vide pour l'instant.")}
+  `;
+}
+function setMood(emoji){
+  const moods = LS.get('lm_mood', []);
+  const todayKey = new Date().toISOString().slice(0,10);
+  let entry = moods.find(m=>m.date===todayKey);
+  if(!entry){ entry = {id:uid(), date:todayKey, emoji:'', note:''}; moods.push(entry); }
+  entry.emoji = emoji;
+  LS.set('lm_mood', moods);
+  render();
+}
+function saveMoodNote(){
+  const moods = LS.get('lm_mood', []);
+  const todayKey = new Date().toISOString().slice(0,10);
+  let entry = moods.find(m=>m.date===todayKey);
+  if(!entry){ entry = {id:uid(), date:todayKey, emoji:'🙂'}; moods.push(entry); }
+  entry.note = document.getElementById('moodNote').value;
+  LS.set('lm_mood', moods);
+  render();
+  showToast('Mood enregistré');
+}
+
+/* ---------- Documents ---------- */
+async function renderDocuments(view){
+  view.innerHTML = `<div class="empty">Chargement…</div>`;
+  const docs = await dbAll();
+  view.innerHTML = `
+    <input type="file" id="fileInput" style="display:none" onchange="handleFile(event)">
+    <button class="btn primary" style="width:100%; margin-bottom:14px;" onclick="document.getElementById('fileInput').click()">+ Ajouter un document</button>
+    ${docs.length? docs.map(d=>`
+      <div class="doc-row">
+        <div class="ic">${d.type && d.type.includes('image') ? '🖼️' : d.type && d.type.includes('pdf') ? '📕' : '📄'}</div>
+        <div class="body">
+          <div class="name">${escapeHtml(d.name)}</div>
+          <div class="meta">${fmtDate(d.date.slice(0,10))} · ${(d.size/1024).toFixed(0)} Ko</div>
+        </div>
+        <a href="${d.dataUrl}" download="${escapeHtml(d.name)}">Ouvrir</a>
+        <button class="del" onclick="removeDoc('${d.id}')">✕</button>
+      </div>
+    `).join('') : emptyBlock('📄','Aucun document. Ajoute tes pièces importantes (bail, carte étudiante, attestations…).')}
+    <p style="font-size:.78rem; color:var(--ink-soft); margin-top:14px;">Les documents sont stockés uniquement sur cet appareil, dans ce navigateur — ils restent consultables hors connexion.</p>
+  `;
+}
+async function handleFile(ev){
+  const file = ev.target.files[0];
+  if(!file) return;
+  if(file.size > 8*1024*1024){ showToast('Fichier trop volumineux (max ~8 Mo)'); return; }
+  const reader = new FileReader();
+  reader.onload = async ()=>{
+    await dbPut({ id:uid(), name:file.name, type:file.type, size:file.size, date:new Date().toISOString(), dataUrl:reader.result });
+    render();
+    showToast('Document ajouté');
+  };
+  reader.readAsDataURL(file);
+}
+async function removeDoc(id){
+  await dbDelete(id);
+  render();
+  showToast('Document supprimé');
+}
+
+/* ---------- Reminders ---------- */
+function collectReminders(){
+  const out = [];
+  const now = new Date(); now.setHours(0,0,0,0);
+
+  LS.get(MODULES.etudes.key, []).filter(i=>!i.done && i.dueDate).forEach(i=>{
+    out.push(mkReminder('🎓', i.title, MODULES.etudes.label, i.dueDate, now));
+  });
+  LS.get(MODULES.logement.key, []).filter(i=>!i.done && i.dueDate).forEach(i=>{
+    out.push(mkReminder('🏠', i.title, MODULES.logement.label, i.dueDate, now));
+  });
+  LS.get(MODULES.objectifs.key, []).filter(i=>i.dueDate).forEach(i=>{
+    out.push(mkReminder('🎯', i.title, MODULES.objectifs.label, i.dueDate, now));
+  });
+  LS.get(MODULES.voyages.key, []).filter(i=>i.dueDate).forEach(i=>{
+    out.push(mkReminder('✈️', i.title, MODULES.voyages.label, i.dueDate, now));
+  });
+  LS.get(MODULES.relations.key, []).filter(i=>i.birthday).forEach(i=>{
+    const next = nextAnniversary(i.birthday, now);
+    out.push(mkReminder('🎂', i.title + ' (anniversaire)', MODULES.relations.label, next, now));
+  });
+  const sk = LS.get('lm_skincare', null);
+  if(sk && sk.products) sk.products.filter(p=>p.repurchase).forEach(p=>{
+    out.push(mkReminder('✨', 'Racheter : '+p.name, 'Skincare', p.repurchase, now));
+  });
+
+  return out.sort((a,b)=> (a.daysLeft===null?9999:a.daysLeft) - (b.daysLeft===null?9999:b.daysLeft));
+}
+function mkReminder(icon, title, moduleLabel, dateStr, now){
+  let daysLeft = null;
+  if(dateStr){
+    const d = new Date(dateStr+'T00:00:00');
+    daysLeft = Math.round((d-now)/86400000);
+  }
+  return {icon, title, moduleLabel, dateStr, daysLeft};
+}
+function nextAnniversary(dateStr, now){
+  const d = new Date(dateStr+'T00:00:00');
+  const next = new Date(now.getFullYear(), d.getMonth(), d.getDate());
+  if(next < now) next.setFullYear(now.getFullYear()+1);
+  return next.toISOString().slice(0,10);
+}
+function reminderRow(r){
+  const when = r.daysLeft===null ? '' :
+    r.daysLeft<0 ? `il y a ${-r.daysLeft} j` :
+    r.daysLeft===0 ? "aujourd'hui" :
+    r.daysLeft===1 ? 'demain' : `dans ${r.daysLeft} j`;
+  const soon = r.daysLeft!==null && r.daysLeft<=2;
+  return `<div class="card reminder-row">
+    <div class="tag">${r.icon}</div>
+    <div class="txt"><div class="t">${escapeHtml(r.title)}</div><div class="m">${escapeHtml(r.moduleLabel)}</div></div>
+    <div class="when ${soon?'soon':''}">${when}</div>
+  </div>`;
+}
+function renderReminders(view){
+  const items = collectReminders();
+  view.innerHTML = items.length ? items.map(reminderRow).join('') : emptyBlock('🔔','Aucune échéance enregistrée pour le moment.');
+}
+
+/* ---------- Modal sheet ---------- */
+function openSheet(title, fieldsHtml, onSave, onDelete){
+  const root = document.getElementById('modalRoot');
+  root.innerHTML = `
+    <div class="overlay" id="overlay">
+      <div class="sheet">
+        <h3>${title}</h3>
+        ${fieldsHtml}
+        <div class="sheet-actions">
+          <button class="btn ghost" onclick="closeSheet()">Annuler</button>
+          <button class="btn primary" id="saveBtn">Enregistrer</button>
+        </div>
+        ${onDelete? `<button class="btn danger" style="width:100%; margin-top:10px;" onclick="(${onDelete.toString()})()">Supprimer</button>` : ''}
+      </div>
+    </div>
+  `;
+  document.getElementById('overlay').addEventListener('click', (e)=>{ if(e.target.id==='overlay') closeSheet(); });
+  document.getElementById('saveBtn').onclick = ()=>{ const ok = onSave(); if(ok!==false) closeSheet(); };
+}
+function closeSheet(){ document.getElementById('modalRoot').innerHTML = ''; }
+
+/* ---------- Backup / export ---------- */
+function openBackup(){
+  const fieldsHtml = `<p style="font-size:.85rem; color:var(--ink-soft); margin-top:0;">Tes données restent uniquement sur cet appareil. Exporte une sauvegarde de temps en temps si tu veux les garder en sécurité.</p>
+    <div class="sheet-actions" style="margin-top:6px;">
+      <button class="btn primary" style="flex:1" onclick="exportBackup()">Exporter</button>
+      <label class="btn ghost" style="flex:1; text-align:center; display:flex; align-items:center; justify-content:center;">
+        Importer<input type="file" accept="application/json" style="display:none" onchange="importBackup(event)">
+      </label>
+    </div>
+    ${firebaseReady && currentUser ? `<button class="btn danger" style="width:100%; margin-top:10px;" onclick="logout()">Se déconnecter</button>` : ''}`;
+  openSheet('Sauvegarde de tes données', fieldsHtml, ()=>false);
+  document.getElementById('saveBtn').style.display='none';
+}
+function exportBackup(){
+  const data = {};
+  Object.keys(localStorage).forEach(k=> data[k] = localStorage.getItem(k));
+  const blob = new Blob([JSON.stringify(data)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'vita-sauvegarde-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  showToast('Sauvegarde téléchargée');
+}
+function importBackup(ev){
+  const file = ev.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const data = JSON.parse(reader.result);
+      Object.entries(data).forEach(([k,v])=> localStorage.setItem(k,v));
+      showToast('Données restaurées');
+      closeSheet();
+      render();
+    }catch(e){ showToast('Fichier invalide'); }
+  };
+  reader.readAsText(file);
+}
+
+/* ---------- Utils ---------- */
+function escapeHtml(s){
+  return (s===undefined || s===null) ? '' : String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function fmtDate(s){
+  if(!s) return '';
+  const d = new Date(s+'T00:00:00');
+  if(isNaN(d)) return s;
+  return d.toLocaleDateString('fr-FR', {day:'numeric', month:'short'});
+}
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=> t.classList.remove('show'), 1800);
+}
+
+/* ---------- Nav + init ---------- */
+document.querySelectorAll('nav.bottom button').forEach(b=>{
+  b.addEventListener('click', ()=> go(b.dataset.route, null));
+});
+
+window.addEventListener('online', updateOfflineBanner);
+window.addEventListener('offline', updateOfflineBanner);
+function updateOfflineBanner(){
+  document.getElementById('offlineBanner').classList.toggle('show', !navigator.onLine);
+}
+updateOfflineBanner();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+  });
+}
+
+boot();
+</script>
+</body>
+</html>
