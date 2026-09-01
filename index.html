@@ -411,7 +411,7 @@ function renderDashboard(view){
     </div>
 
     <div class="section-title">Prochainement</div>
-    ${upcoming.length ? upcoming.slice(0,4).map(reminderRow).join('') : emptyBlock('✨','Rien à l\\'horizon dans les 14 prochains jours.')}
+    ${upcoming.length ? upcoming.slice(0,4).map(reminderRow).join('') : emptyBlock('✨',"Rien à l'horizon dans les 14 prochains jours.")}
 
     <div class="section-title">Aujourd'hui</div>
     <div class="card tight">
@@ -641,7 +641,7 @@ function renderSkincare(view){
         </div>
         <button class="del" onclick="deleteProduct('${p.id}')">✕</button>
       </div>
-    `).join('') : emptyBlock('✨','Aucun produit suivi pour l\\'instant.')}
+    `).join('') : emptyBlock('✨',"Aucun produit suivi pour l'instant.")}
     <button class="fab" style="display:flex" onclick="openProductForm()">+</button>
   `;
 }
@@ -653,7 +653,7 @@ function toggleSkincareStep(prefix, id){
 function addSkincareStep(prefix){
   openSheet('Nouvelle étape', `<div class="field"><label>Nom de l'étape</label><input id="f_name" type="text"></div>`, ()=>{
     const name = document.getElementById('f_name').value.trim();
-    if(!name){ showToast('Donne un nom à l\\'étape'); return false; }
+    if(!name){ showToast("Donne un nom à l'étape"); return false; }
     const data = LS.get('lm_skincare', defaultSkincare());
     data[prefix].push({id:uid(), name, done:false});
     LS.set('lm_skincare', data);
@@ -707,7 +707,7 @@ function renderMood(view){
           ${m.note? `<div class="notes">${escapeHtml(m.note)}</div>`:''}
         </div>
       </div>
-    `).join('') : emptyBlock('💭','Ton journal d\\'humeur est vide pour l\\'instant.')}
+    `).join('') : emptyBlock('💭',"Ton journal d'humeur est vide pour l'instant.")}
   `;
 }
 function setMood(emoji){
